@@ -1,0 +1,16 @@
+[package]
+name = "yarn_remapper"
+version = "0.1.0"
+edition = "2021"
+authors = ["1zuna <marco@ccbluex.net>"]
+description = "A Rust library for remapping Minecraft's Yarn named mappings to obfuscated identifiers."
+repository = "https://github.com/CCBlueX/yarn_remapper"
+license = "GPL-3.0"
+readme = "README.md"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0"
+derive-new = "0.5"
+derive-getters = "0.3.0"
