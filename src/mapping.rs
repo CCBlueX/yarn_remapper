@@ -88,6 +88,21 @@ impl MappingFile {
 pub enum MappingError {
     #[error("I/O error: {0}")]
     Io(#[from] io::Error),
+    
+    #[error("Invalid or missing header")]
+    InvalidHeader,
+    
+    #[error("Missing namespace: {0}")]
+    MissingNamespace(Arc<str>),
+    
+    #[error("Missing class name")]
+    MissingClassName,
+    
+    #[error("Missing field or method name")]
+    MissingFieldOrMethodName,
+    
+    #[error("Unknown subsection type")]
+    UnknownSubsectionType
 }
 
 /// A trait for loading and parsing mapping data.
