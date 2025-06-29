@@ -1,4 +1,63 @@
+use std::path::Path;
 use std::sync::Arc;
+use thiserror::Error;
+
+/// Represents the source of a mapping input file.
+///
+/// This enum abstracts over different ways to provide mapping data:
+/// - a filesystem path (`Path`),
+/// - or raw bytes (`Bytes`).
+///
+/// The loader can accept either to flexibly support different use cases
+/// (e.g., reading from disk or in-memory data).
+pub enum MappingFile<'a> {
+    /// Mapping file located at a filesystem path.
+    Path(&'a Path),
+
+    /// Mapping file provided as raw bytes in memory.
+    Bytes(&'a [u8])
+}
+
+/// Errors that can occur during loading or processing mapping files.
+///
+/// This enum aggregates possible error types, such as I/O errors,
+/// parsing errors, or invalid mapping formats.
+/// Implementors can extend this to support additional error kinds as needed.
+#[derive(Debug, Error)]
+pub enum MappingError {
+    #[error("I/O error: {0}")]
+    Io(#[from] std::io::Error),
+}
+
+/// Loads a mapping from a file or bytes.
+///
+/// Implementors of this trait provide loading/parsing logic that converts
+/// raw mapping data into an instance implementing the [`Mapping`] trait.
+///
+/// The `load` function takes a generic `file` argument that can be converted
+/// into [`MappingFile`], enabling flexible inputs like file paths or byte slices.
+pub trait MappingLoader {
+    /// The concrete type of the mapping produced by this loader.
+    type MappingType: Mapping;
+
+    /// Loads a mapping from the given input.
+    ///
+    /// # Parameters
+    ///
+    /// * `file` - Input mapping data source, convertible into [`MappingFile`].
+    ///
+    /// # Returns
+    ///
+    /// Returns the loaded mapping on success, or a [`MappingError`] on failure.
+    ///
+    /// # Errors
+    ///
+    /// Returns `MappingError::Io` if reading from a file fails, or
+    /// other error variants depending on implementation.
+    fn load<'a, F>(file: F) -> Result<Self::MappingType, MappingError>
+    where
+        F: Into<MappingFile<'a>>;
+}
 
 /// Trait representing a mapping between named identifiers and their obfuscated counterparts.
 ///
@@ -21,7 +80,7 @@ pub trait Mapping {
     ///
     /// # Returns
     ///
-    /// An `Option<Arc<str>>` containing the obfuscated class name if available, or `None` if no mapping exists.
+    /// An [`Option<Arc<str>>`] containing the obfuscated class name if available, or [`None`] if no mapping exists.
     fn remap_class<C>(&self, class_name: C) -> Option<Arc<str>>
     where
         C: AsRef<str>;
@@ -36,7 +95,7 @@ pub trait Mapping {
     ///
     /// # Returns
     ///
-    /// An `Option<Arc<str>>` containing the obfuscated method name if available, or `None` if no mapping exists.
+    /// An [`Option<Arc<str>>`] containing the obfuscated method name if available, or [`None`] if no mapping exists.
     fn remap_method<C, M, D>(&self, class_name: C, method_name: M, descriptor: D) -> Option<Arc<str>>
     where
         C: AsRef<str>,
@@ -53,13 +112,20 @@ pub trait Mapping {
     ///
     /// # Returns
     ///
-    /// An `Option<Arc<str>>` containing the obfuscated field name if available, or `None` if no mapping exists.
+    /// An [`Option<Arc<str>>`] containing the obfuscated field name if available, or [`None`] if no mapping exists.
     fn remap_field<C, F, D>(&self, class_name: C, field_name: F, descriptor: D) -> Option<Arc<str>>
     where 
         C: AsRef<str>,
         F: AsRef<str>,
         D: AsRef<str>;
+}
 
+/// Extension trait for [`Mapping`] providing additional utility methods.
+///
+/// This trait offers higher-level helper functions such as recursive
+/// remapping of descriptors, which are commonly needed when working
+/// with Java bytecode descriptors in the context of obfuscated code.
+pub trait MappingExt: Mapping {
     /// Remaps the named descriptor to its obfuscated counterpart from the mapping data.
     ///
     /// This function is recursive and will remap the descriptor recursively.
@@ -72,7 +138,7 @@ pub trait Mapping {
     ///
     /// # Returns
     ///
-    /// An `Arc<str>` containing the obfuscated descriptor in official format.
+    /// An [`Arc<str>`] containing the obfuscated descriptor in official format.
     ///
     /// # Notes
     ///
@@ -80,4 +146,13 @@ pub trait Mapping {
     fn remap_descriptor<D>(&self, descriptor: &D) -> Arc<str>
     where
         D: AsRef<str>;
+}
+
+impl<T: Mapping> MappingExt for T {
+    fn remap_descriptor<D>(&self, descriptor: &D) -> Arc<str>
+    where
+        D: AsRef<str>
+    {
+        todo!()
+    }
 }
