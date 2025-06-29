@@ -183,7 +183,7 @@ mod tests {
     use super::*;
 
     fn get_mapping() -> impl Mapping {
-        TinyV2Mapping::load("test/1.21.1.tiny").unwrap()
+        TinyV2Mapping::load("test/mappings.tiny").unwrap()
     }
 
     #[test]
