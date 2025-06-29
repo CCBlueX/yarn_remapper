@@ -29,32 +29,28 @@ pub enum MappingError {
     Io(#[from] std::io::Error),
 }
 
-/// Loads a mapping from a file or bytes.
+/// A trait for loading and parsing mapping data.
 ///
-/// Implementors of this trait provide loading/parsing logic that converts
-/// raw mapping data into an instance implementing the [`Mapping`] trait.
+/// Implementors provide logic to convert raw mapping data into a concrete type
+/// that implements the [`Mapping`] trait.
 ///
-/// The `load` function takes a generic `file` argument that can be converted
-/// into [`MappingFile`], enabling flexible inputs like file paths or byte slices.
-pub trait MappingLoader {
-    /// The concrete type of the mapping produced by this loader.
-    type MappingType: Mapping;
-
-    /// Loads a mapping from the given input.
+/// The input data source is abstracted by [`MappingFile`], allowing flexibility
+/// in how the mapping data is provided (e.g., files, byte slices, etc.).
+pub trait MappingLoader: Sized + Mapping {
+    /// Loads a mapping from the given input source.
     ///
     /// # Parameters
     ///
-    /// * `file` - Input mapping data source, convertible into [`MappingFile`].
+    /// - `input`: A data source convertible into [`MappingFile`].
     ///
     /// # Returns
     ///
-    /// Returns the loaded mapping on success, or a [`MappingError`] on failure.
+    /// Returns the loaded mapping instance on success, or a [`MappingError`] on failure.
     ///
     /// # Errors
     ///
-    /// Returns `MappingError::Io` if reading from a file fails, or
-    /// other error variants depending on implementation.
-    fn load<'a, F>(file: F) -> Result<Self::MappingType, MappingError>
+    /// Returns a [`MappingError`] variant if loading or parsing the input fails.
+    fn load<'a, F>(file: F) -> Result<Self, MappingError>
     where
         F: Into<MappingFile<'a>>;
 }
