@@ -1,3 +1,4 @@
+use std::{fs, io};
 use std::path::Path;
 use std::sync::Arc;
 use thiserror::Error;
@@ -10,12 +11,72 @@ use thiserror::Error;
 ///
 /// The loader can accept either to flexibly support different use cases
 /// (e.g., reading from disk or in-memory data).
-pub enum MappingFile<'a> {
+pub enum MappingFile {
     /// Mapping file located at a filesystem path.
-    Path(&'a Path),
+    Path(Box<Path>),
 
     /// Mapping file provided as raw bytes in memory.
-    Bytes(&'a [u8])
+    Bytes(Arc<[u8]>)
+}
+
+impl MappingFile {
+    /// Returns the mapping data as a byte slice.
+    ///
+    /// If the `MappingFile` is already bytes, returns them directly.
+    /// If it is a path, reads the file contents and returns the bytes.
+    ///
+    /// # Errors
+    ///
+    /// Returns an `io::Error` if reading from the file path fails.
+    pub fn as_bytes(&self) -> Result<Arc<[u8]>, io::Error> {
+        match self {
+            MappingFile::Bytes(data) => Ok(data.clone()),
+            MappingFile::Path(path) => {
+                let bytes = fs::read(path)?;
+                Ok(bytes.into())
+            }
+        }
+    }
+
+    /// Returns the mapping data as an `Arc<str>`.
+    ///
+    /// This method converts the internal byte representation of the mapping file into a
+    /// shared string slice (`Arc<str>`). If the data is already in memory, it is reused;
+    /// if it comes from a file path, the file is read and validated as UTF-8.
+    ///
+    /// To avoid unnecessary allocations, this method performs a zero-copy conversion from
+    /// `Arc<[u8]>` to `Arc<str>` after validating that the bytes are valid UTF-8. This is done
+    /// using `Arc::from_raw` on the validated pointer, ensuring that the resulting string shares
+    /// ownership of the original data without cloning it.
+    ///
+    /// # Errors
+    ///
+    /// Returns an [`io::Error`] in the following cases:
+    ///
+    /// - The file cannot be read
+    /// - The byte content is not valid UTF-8
+    ///
+    /// # Safety
+    ///
+    /// Internally uses an unsafe block to perform a zero-copy cast from `Arc<[u8]>` to `Arc<str>`.
+    /// This is sound only because the bytes are validated using [`std::str::from_utf8`] beforehand.
+    pub fn as_str(&self) -> Result<Arc<str>, io::Error> {
+        let bytes = self.as_bytes()?;
+
+        // Validate UTF-8 without allocating
+        let _ = std::str::from_utf8(&bytes)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+
+        // SAFETY: We just verified that the bytes are valid UTF-8
+        let ptr = Arc::into_raw(bytes);
+        let len = unsafe { (&*ptr).len() };
+        let str_ptr = unsafe {
+            let slice = std::slice::from_raw_parts(ptr as *const u8, len);
+            let str_ref = std::str::from_utf8_unchecked(slice);
+            Arc::from_raw(str_ref)
+        };
+        Ok(str_ptr)
+    }
 }
 
 /// Errors that can occur during loading or processing mapping files.
@@ -26,7 +87,7 @@ pub enum MappingFile<'a> {
 #[derive(Debug, Error)]
 pub enum MappingError {
     #[error("I/O error: {0}")]
-    Io(#[from] std::io::Error),
+    Io(#[from] io::Error),
 }
 
 /// A trait for loading and parsing mapping data.
@@ -50,9 +111,9 @@ pub trait MappingLoader: Sized + Mapping {
     /// # Errors
     ///
     /// Returns a [`MappingError`] variant if loading or parsing the input fails.
-    fn load<'a, F>(file: F) -> Result<Self, MappingError>
+    fn load<F>(file: F) -> Result<Self, MappingError>
     where
-        F: Into<MappingFile<'a>>;
+        F: Into<MappingFile>;
 }
 
 /// Trait representing a mapping between named identifiers and their obfuscated counterparts.
