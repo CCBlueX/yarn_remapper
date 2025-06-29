@@ -1,3 +1,5 @@
+pub mod mapping;
+
 use anyhow::{Context, Result, bail};
 use derive_new::new;
 use derive_getters::Getters;
