@@ -177,3 +177,37 @@ impl Mapping for TinyV2Mapping {
             .map(|method| method.official_name.clone().unwrap_or_else(|| Arc::from(field_name.as_ref())))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn get_mapping() -> impl Mapping {
+        TinyV2Mapping::load("test/mappings.tiny").unwrap()
+    }
+
+    #[test]
+    fn test_class_remap() {
+        let mapping = get_mapping();
+
+        assert_eq!(mapping.remap_class("net/minecraft/client/MinecraftClient"), Some("evi".into()));
+    }
+
+    #[test]
+    fn test_method_remap() {
+        let mapping = get_mapping();
+        assert_eq!(mapping.remap_method("net/minecraft/client/MinecraftClient", "getWindowTitle", "()Ljava/lang/String;"), Some("be".into()));
+    }
+
+    #[test]
+    fn test_method_remap_2() {
+        let mapping = get_mapping();
+        assert_eq!(mapping.remap_method("net/minecraft/client/world/ClientWorld", "addParticle", "(DDDDDLnet/minecraft/particle/ParticleEffect;)V"), Some("a".into()));
+    }
+
+    #[test]
+    fn test_field_remap() {
+        let mapping = get_mapping();
+        assert_eq!(mapping.remap_field("net/minecraft/client/MinecraftClient", "inGameHud", "Lnet/minecraft/client/gui/hud/InGameHud;"), Some("l".into()));
+    }
+}
