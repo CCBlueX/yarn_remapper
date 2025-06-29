@@ -137,7 +137,7 @@ impl Mapping {
             
         }
         
-        return descriptor.to_string();
+        descriptor.to_string()
     }
 
 
