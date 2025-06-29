@@ -41,7 +41,7 @@ pub trait MappingLoader: Sized + Mapping {
     ///
     /// # Parameters
     ///
-    /// - `input`: A data source convertible into [`MappingFile`].
+    /// - `file`: A data source convertible into [`MappingFile`].
     ///
     /// # Returns
     ///
