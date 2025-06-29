@@ -276,7 +276,7 @@ impl<T: Mapping> MappingExt for T {
             let remapped_class_name = self.remap_class(class_name)
                 .unwrap_or_else(|| class_name.into());
 
-            return format!(":{remapped_class_name};").into();
+            return format!("L{remapped_class_name};").into();
         }
 
         // Remap [ array descriptor

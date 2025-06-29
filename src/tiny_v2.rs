@@ -158,7 +158,6 @@ impl Mapping for TinyV2Mapping {
         D: AsRef<str>
     {
         let remapped_descriptor = self.remap_descriptor(descriptor.as_ref());
-        
         self.classes.get(class_name.as_ref())
             .and_then(|class| class.methods.get(&(method_name.as_ref().into(), remapped_descriptor)))
             .map(|method| method.official_name.clone().unwrap_or_else(|| Arc::from(method_name.as_ref())))
@@ -171,7 +170,6 @@ impl Mapping for TinyV2Mapping {
         D: AsRef<str>
     {
         let remapped_descriptor = self.remap_descriptor(descriptor.as_ref());
-
         self.classes.get(class_name.as_ref())
             .and_then(|class| class.fields.get(&(field_name.as_ref().into(), remapped_descriptor)))
             .map(|method| method.official_name.clone().unwrap_or_else(|| Arc::from(field_name.as_ref())))
