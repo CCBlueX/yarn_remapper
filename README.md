@@ -34,7 +34,9 @@ TINY v2 Mapping File: yarn-1.20.4-rc1+build.1-mergedv2.jar
 Here's an example of how to use yarn_remapper in your Rust project:
 
 ```rust
-use yarn_remapper::{Mapping, parse_tiny_v2};
+use yarn_remapper::{Mapping};
+use yarn_remapper::mapping::MappingLoader;
+use yarn_remapper::tiny_v2::TinyV2Mapping;
 use std::path::Path;
 
 fn main() -> Result<(), Error> {
@@ -42,7 +44,7 @@ fn main() -> Result<(), Error> {
     let path = Path::new("path/to/mappings.tiny");
     
     // Parse mappings
-    let mapping = parse_tiny_v2(&path)?;
+    let mapping = TinyV2Mapping::load(&path)?;
 
     // Remap a class name
     if let Some(obfuscated_name) = mapping.remap_class("net/minecraft/client/MinecraftClient") {
