@@ -1,5 +1,5 @@
 use std::{fs, io};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use thiserror::Error;
 
@@ -17,6 +17,48 @@ pub enum MappingFile {
 
     /// Mapping file provided as raw bytes in memory.
     Bytes(Arc<[u8]>)
+}
+
+impl From<PathBuf> for MappingFile {
+    fn from(path: PathBuf) -> Self {
+        MappingFile::Path(path.into_boxed_path())
+    }
+}
+
+impl From<&Path> for MappingFile {
+    fn from(path: &Path) -> Self {
+        MappingFile::Path(path.to_path_buf().into_boxed_path())
+    }
+}
+
+impl From<&str> for MappingFile {
+    fn from(path: &str) -> Self {
+        MappingFile::Path(PathBuf::from(path).into_boxed_path())
+    }
+}
+
+impl From<String> for MappingFile {
+    fn from(path: String) -> Self {
+        MappingFile::Path(PathBuf::from(path).into_boxed_path())
+    }
+}
+
+impl From<Vec<u8>> for MappingFile {
+    fn from(bytes: Vec<u8>) -> Self {
+        MappingFile::Bytes(Arc::from(bytes.into_boxed_slice()))
+    }
+}
+
+impl From<&[u8]> for MappingFile {
+    fn from(bytes: &[u8]) -> Self {
+        MappingFile::Bytes(Arc::from(bytes.to_vec().into_boxed_slice()))
+    }
+}
+
+impl From<Arc<[u8]>> for MappingFile {
+    fn from(bytes: Arc<[u8]>) -> Self {
+        MappingFile::Bytes(bytes)
+    }
 }
 
 impl MappingFile {
