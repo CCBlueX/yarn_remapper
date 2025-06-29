@@ -28,7 +28,7 @@ yarn_remapper = "0.1.1"
 ```
 Ensure you have downloaded the mapping file required for remapping:
 
-TINY v2 Mapping File: yarn-1.20.4-rc1+build.1-mergedv2.jar
+TINY v2 Mapping File: [yarn-1.20.4-rc1+build.1-mergedv2.jar](https://maven.fabricmc.net/net/fabricmc/yarn/1.20.4%2Bbuild.1/yarn-1.20.4%2Bbuild.1-mergedv2.jar)
 
 ## Usage
 Here's an example of how to use yarn_remapper in your Rust project:
