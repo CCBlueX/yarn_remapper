@@ -145,14 +145,64 @@ pub trait MappingExt: Mapping {
     /// The input descriptor must be in the named format, and the output descriptor will be in the obfuscated format.
     fn remap_descriptor<D>(&self, descriptor: &D) -> Arc<str>
     where
-        D: AsRef<str>;
+        D: AsRef<str> + ?Sized;
 }
 
 impl<T: Mapping> MappingExt for T {
     fn remap_descriptor<D>(&self, descriptor: &D) -> Arc<str>
     where
-        D: AsRef<str>
+        D: AsRef<str> + ?Sized
     {
-        todo!()
+        let descriptor = descriptor.as_ref();
+
+        // Remap L class descriptor from named to official
+        if descriptor.starts_with('L') {
+            // Format: Lnet/minecraft/client/MinecraftClient;
+            let class_name = &descriptor[1..descriptor.len()-1];
+            let remapped_class_name = self.remap_class(class_name)
+                .unwrap_or_else(|| class_name.into());
+
+            return format!(":{remapped_class_name};").into();
+        }
+
+        // Remap [ array descriptor
+        if let Some(stripped) = descriptor.strip_prefix('[') {
+            // Format: [Lnet/minecraft/client/MinecraftClient;
+            let remapped_descriptor = self.remap_descriptor(stripped);
+            return format!("[{remapped_descriptor}").into();
+        }
+
+        // Remap ( method descriptor
+        if descriptor.starts_with('(') {
+            // Remap method descriptor recursively
+            // Format: (Lnet/minecraft/client/MinecraftClient;Lnet/minecraft/client/MinecraftClient;)Lnet/minecraft/client/MinecraftClient;
+
+            let mut remapped_descriptor = String::new();
+            let mut current_descriptor = String::new();
+
+            for ch in descriptor.chars() {
+                match ch {
+                    '(' | ')' => remapped_descriptor.push(ch),
+                    'L' => current_descriptor.push('L'),
+                    ';' => {
+                        current_descriptor.push(';');
+                        let remapped = self.remap_descriptor(&current_descriptor);
+                        remapped_descriptor.push_str(&remapped);
+                        current_descriptor.clear();
+                    }
+                    _ => {
+                        if current_descriptor.is_empty() {
+                            remapped_descriptor.push(ch);
+                        } else {
+                            current_descriptor.push(ch);
+                        }
+                    }
+                }
+            }
+
+            return remapped_descriptor.into();
+        }
+
+        descriptor.into()
     }
 }
