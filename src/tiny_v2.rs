@@ -72,7 +72,7 @@ impl MappingLoader for TinyV2Mapping {
             namespace_named_index,
             namespace_intermediary_index,
             namespace_official_index
-        ) = extract_namespaces(&mut mapping)?;
+        ) = mapping.extract_namespaces()?;
         
         let mut current_class_name: Arc<str> = "".into();
         
@@ -81,8 +81,7 @@ impl MappingLoader for TinyV2Mapping {
                 continue
             }
 
-            parse_line(
-                &mut mapping,
+            mapping.parse_line(
                 namespace_named_index,
                 namespace_intermediary_index,
                 namespace_official_index,
@@ -95,16 +94,6 @@ impl MappingLoader for TinyV2Mapping {
     }
 }
 
-fn extract_namespaces(mapping: &mut TinyV2Mapping) -> Result<(usize, usize, usize), MappingError> {
-    let namespace_named_index = mapping.header.namespaces.iter().position(|ns| &**ns == "named")
-        .ok_or(MappingError::MissingNamespace("named".into()))?;
-    let namespace_intermediary_index = mapping.header.namespaces.iter().position(|ns| &**ns == "intermediary")
-        .ok_or(MappingError::MissingNamespace("intermediary".into()))?;
-    let namespace_official_index = mapping.header.namespaces.iter().position(|ns| &**ns == "official")
-        .ok_or(MappingError::MissingNamespace("official".into()))?;
-    Ok((namespace_named_index, namespace_intermediary_index, namespace_official_index))
-}
-
 const SUBSECTION_OFFSET: usize = 1;
 const DESCRIPTOR_OFFSET: usize = 2;
 const DELIMITER: char = '\t';
@@ -113,109 +102,122 @@ const CLASS_IDENT: &str = "c";
 const COMMENT_IDENT: &str = "c";
 const METHOD_IDENT: &str = "m";
 const FIELD_IDENT: &str = "f";
+const BASE_NAMESPACE_OFFSET: usize = 1;
 
-fn parse_line(
-    mapping: &mut TinyV2Mapping,
-    namespace_named_index: usize,
-    namespace_intermediary_index: usize,
-    namespace_official_index: usize,
-    current_class_name: &mut Arc<str>,
-    line: &str
-) -> Result<(), MappingError> {
-    let parts: Vec<&str> = line.split(DELIMITER).collect();
-    match parts[0] {
-        CLASS_IDENT => parse_class(
-            mapping,
-            namespace_named_index,
-            namespace_intermediary_index,
-            namespace_official_index,
-            current_class_name,
-            &parts
-        )?,
-        _ if parts[0].is_empty() && !parts[1].is_empty() => {
-            // Method or field section, tab indicates a subsection.
-            if let Some(class_mapping) = mapping.classes.get_mut(current_class_name) {
-                let subsection_type = &parts[SUBSECTION_OFFSET];
-                let descriptor = parts[DESCRIPTOR_OFFSET].into();
+impl TinyV2Mapping {
+    fn extract_namespaces(&mut self) -> Result<(usize, usize, usize), MappingError> {
+        let namespace_named_index = self.header.namespaces.iter().position(|ns| &**ns == "named")
+            .ok_or(MappingError::MissingNamespace("named".into()))?;
+        let namespace_intermediary_index = self.header.namespaces.iter().position(|ns| &**ns == "intermediary")
+            .ok_or(MappingError::MissingNamespace("intermediary".into()))?;
+        let namespace_official_index = self.header.namespaces.iter().position(|ns| &**ns == "official")
+            .ok_or(MappingError::MissingNamespace("official".into()))?;
+        Ok((namespace_named_index, namespace_intermediary_index, namespace_official_index))
+    }
 
-                match *subsection_type {
-                    METHOD_IDENT | FIELD_IDENT => parse_class_members(
-                        namespace_named_index,
-                        namespace_intermediary_index,
-                        namespace_official_index,
-                        &parts,
-                        class_mapping,
-                        subsection_type,
-                        descriptor
-                    )?,
-                    COMMENT_IDENT => {
-                        // Comment section
-                        // Not relevant for remapping.
-                    }
-                    _ => {
-                        return Err(MappingError::UnknownSubsectionType)
+    fn parse_line(
+        &mut self,
+        namespace_named_index: usize,
+        namespace_intermediary_index: usize,
+        namespace_official_index: usize,
+        current_class_name: &mut Arc<str>,
+        line: &str
+    ) -> Result<(), MappingError> {
+        let parts: Vec<&str> = line.split(DELIMITER).collect();
+        match parts[0] {
+            CLASS_IDENT => self.parse_class(
+                namespace_named_index,
+                namespace_intermediary_index,
+                namespace_official_index,
+                current_class_name,
+                &parts
+            )?,
+            _ if parts[0].is_empty() && !parts[1].is_empty() => {
+                // Method or field section, tab indicates a subsection.
+                if let Some(class_mapping) = self.classes.get_mut(current_class_name) {
+                    let subsection_type = &parts[SUBSECTION_OFFSET];
+                    let descriptor = parts[DESCRIPTOR_OFFSET].into();
+
+                    match *subsection_type {
+                        METHOD_IDENT | FIELD_IDENT => class_mapping.parse_class_members(
+                            namespace_named_index,
+                            namespace_intermediary_index,
+                            namespace_official_index,
+                            &parts,
+                            subsection_type,
+                            descriptor
+                        )?,
+                        COMMENT_IDENT => {
+                            // Comment section
+                            // Not relevant for remapping.
+                        }
+                        _ => {
+                            return Err(MappingError::UnknownSubsectionType)
+                        }
                     }
                 }
-            }
-        },
-        _ => {}
+            },
+            _ => {}
+        }
+
+        Ok(())
     }
 
-    Ok(())
-}
+    fn parse_class(
+        &mut self,
+        namespace_named_index: usize,
+        namespace_intermediary_index: usize,
+        namespace_official_index: usize,
+        current_class_name: &mut Arc<str>,
+        parts: &Vec<&str>
+    ) -> Result<(), MappingError> {
+        let class_name: Arc<str> = parts.get(BASE_NAMESPACE_OFFSET + namespace_named_index)
+            .map(|s| Arc::from(&**s))
+            .ok_or(MappingError::MissingClassName)?;
 
-const BASE_NAMESPACES_OFFSET: usize = 3;
+        let official_name: Option<Arc<str>> = parts.get(BASE_NAMESPACE_OFFSET + namespace_official_index)
+            .map(|s| Arc::from(&**s));
 
-fn parse_class_members(
-    namespace_named_index: usize,
-    namespace_intermediary_index: usize,
-    namespace_official_index: usize,
-    parts: &Vec<&str>,
-    class_mapping: &mut ClassMapping,
-    subsection_type: &&str,
-    descriptor: Arc<str>
-) -> Result<(), MappingError> {
-    let named_name: Arc<str> = parts.get(BASE_NAMESPACES_OFFSET + namespace_named_index)
-        .map(|s| Arc::from(&**s))
-        .ok_or(MappingError::MissingFieldOrMethodName)?;
+        let intermediary_name: Option<Arc<str>> = parts.get(BASE_NAMESPACE_OFFSET + namespace_intermediary_index)
+            .map(|s| Arc::from(&**s));
 
-    let official_name: Option<Arc<str>> = parts.get(BASE_NAMESPACES_OFFSET + namespace_official_index)
-        .map(|s| Arc::from(&**s));
-
-    let intermediary_name: Option<Arc<str>> = parts.get(BASE_NAMESPACES_OFFSET + namespace_intermediary_index)
-        .map(|s| Arc::from(&**s));
-
-    if *subsection_type == "m" {
-        // Method section
-        class_mapping.methods.insert((named_name, descriptor), MethodMapping::new(official_name, intermediary_name));
-    } else {
-        // Field section
-        class_mapping.fields.insert((named_name, descriptor), FieldMapping::new(official_name, intermediary_name));
+        *current_class_name = class_name.clone();
+        self.classes.insert(class_name, ClassMapping::new(official_name, intermediary_name, HashMap::new(), HashMap::new()));
+        Ok(())
     }
-    Ok(())
 }
 
-fn parse_class(
-    mapping: &mut TinyV2Mapping,
-    namespace_named_index: usize,
-    namespace_intermediary_index: usize,
-    namespace_official_index: usize,
-    current_class_name: &mut Arc<str>,
-    parts: &Vec<&str>
-) -> Result<(), MappingError> {
-    let class_name: Arc<str> = parts.get(1 + namespace_named_index)
-        .map(|s| Arc::from(&**s))
-        .ok_or(MappingError::MissingClassName)?;
+const BASE_CLASS_MEMBERS_NAMESPACE_OFFSET: usize = 3;
 
-    let official_name: Option<Arc<str>> = parts.get(1 + namespace_official_index)
-        .map(|s| Arc::from(&**s));
+impl ClassMapping {
+    fn parse_class_members(
+        &mut self,
+        namespace_named_index: usize,
+        namespace_intermediary_index: usize,
+        namespace_official_index: usize,
+        parts: &Vec<&str>,
+        subsection_type: &&str,
+        descriptor: Arc<str>
+    ) -> Result<(), MappingError> {
+        let named_name: Arc<str> = parts.get(BASE_CLASS_MEMBERS_NAMESPACE_OFFSET + namespace_named_index)
+            .map(|s| Arc::from(&**s))
+            .ok_or(MappingError::MissingFieldOrMethodName)?;
 
-    let intermediary_name: Option<Arc<str>> = parts.get(1 + namespace_intermediary_index)
-        .map(|s| Arc::from(&**s));
+        let official_name: Option<Arc<str>> = parts.get(BASE_CLASS_MEMBERS_NAMESPACE_OFFSET + namespace_official_index)
+            .map(|s| Arc::from(&**s));
 
-    *current_class_name = class_name.clone();
-    mapping.classes.insert(class_name, ClassMapping::new(official_name, intermediary_name, HashMap::new(), HashMap::new()));
-    Ok(())
+        let intermediary_name: Option<Arc<str>> = parts.get(BASE_CLASS_MEMBERS_NAMESPACE_OFFSET + namespace_intermediary_index)
+            .map(|s| Arc::from(&**s));
+
+        if *subsection_type == METHOD_IDENT {
+            // Method section
+            self.methods.insert((named_name, descriptor), MethodMapping::new(official_name, intermediary_name));
+        } else {
+            // Field section
+            self.fields.insert((named_name, descriptor), FieldMapping::new(official_name, intermediary_name));
+        }
+        Ok(())
+    }
 }
 
 impl Mapping for TinyV2Mapping {
