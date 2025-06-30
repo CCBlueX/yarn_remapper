@@ -71,7 +71,7 @@ impl MappingLoader for TinyV2Mapping {
     {
         let contents = file.into().as_str()?;
         let mut lines = contents.lines();
-        
+
         let header_line = lines.next().ok_or(MappingError::InvalidHeader)?;
         let header = parse_header(header_line).ok_or(MappingError::InvalidHeader)?;
         let mut mapping = TinyV2Mapping::new(header);
@@ -81,9 +81,9 @@ impl MappingLoader for TinyV2Mapping {
             namespace_intermediary_index,
             namespace_official_index
         ) = mapping.extract_namespaces()?;
-        
+
         let mut current_class_name: Arc<str> = "".into();
-        
+
         for line in lines {
             if line.is_empty() || line.starts_with('#') {
                 continue
@@ -97,7 +97,7 @@ impl MappingLoader for TinyV2Mapping {
                 line
             )?;
         }
-        
+
         Ok(mapping)
     }
 }
@@ -121,7 +121,7 @@ impl TinyV2Mapping {
                     .ok_or(MappingError::MissingNamespace($namespace.into()))?
             }};
         }
-        
+
         Ok((find!("named"), find!("intermediary"), find!("official")))
     }
 
@@ -266,10 +266,11 @@ impl Mapping for TinyV2Mapping {
 
 #[cfg(test)]
 mod tests {
+    use std::path::Path;
     use super::*;
 
     fn get_mapping() -> impl Mapping {
-        TinyV2Mapping::load(include_bytes!("../test/mappings.tiny")).unwrap()
+        TinyV2Mapping::load(Path::new("test/mappings.tiny")).unwrap()
     }
 
     #[test]
