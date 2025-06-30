@@ -51,19 +51,6 @@ pub struct TinyV2Mapping {
     classes: HashMap<Arc<str>, ClassMapping>,
 }
 
-fn parse_header(header_line: &str) -> Option<Header> {
-    let header_parts: Vec<&str> = header_line.split('\t').collect();
-    if header_parts[0] != "tiny" || header_parts.len() < 5 {
-        return None;
-    }
-
-    let major_version: usize = header_parts[1].parse().ok()?;
-    let minor_version: usize = header_parts[2].parse().ok()?;
-    let namespaces: Vec<Arc<str>> = header_parts[3..].iter().map(|s| Arc::from(&**s)).collect();
-
-    Some(Header::new(major_version, minor_version, namespaces))
-}
-
 impl MappingLoader for TinyV2Mapping {
     fn load<F>(file: F) -> Result<Self, MappingError>
     where
@@ -102,9 +89,26 @@ impl MappingLoader for TinyV2Mapping {
     }
 }
 
+const DELIMITER: char = '\t';
+const HEADER_MAJOR_OFFSET: usize = 1;
+const HEADER_MINOR_OFFSET: usize = 2;
+const HEADER_NAMESPACES_OFFSET: usize = 3;
+
+fn parse_header(header_line: &str) -> Option<Header> {
+    let header_parts: Vec<&str> = header_line.split(DELIMITER).collect();
+    if header_parts[0] != "tiny" || header_parts.len() < 5 {
+        return None;
+    }
+
+    let major_version: usize = header_parts[HEADER_MAJOR_OFFSET].parse().ok()?;
+    let minor_version: usize = header_parts[HEADER_MINOR_OFFSET].parse().ok()?;
+    let namespaces: Vec<Arc<str>> = header_parts[HEADER_NAMESPACES_OFFSET..].iter().map(|s| Arc::from(&**s)).collect();
+
+    Some(Header::new(major_version, minor_version, namespaces))
+}
+
 const SUBSECTION_OFFSET: usize = 1;
 const DESCRIPTOR_OFFSET: usize = 2;
-const DELIMITER: char = '\t';
 
 const CLASS_IDENT: &str = "c";
 const COMMENT_IDENT: &str = "c";
