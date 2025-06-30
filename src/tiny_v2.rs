@@ -117,6 +117,21 @@ const FIELD_IDENT: &str = "f";
 const BASE_NAMESPACE_OFFSET: usize = 1;
 const SECTION_IDENT_OFFSET: usize = 0;
 
+macro_rules! namespace_value {
+    (base, $parts:expr, $namespace_index:expr) => {{
+        let value: Option<Arc<str>> = $parts.get(BASE_NAMESPACE_OFFSET + $namespace_index)
+            .map(|s| Arc::from(&**s));
+        
+        value
+    }};
+    (member, $parts:expr, $namespace_index:expr) => {{
+        let value: Option<Arc<str>> = $parts.get(BASE_CLASS_MEMBERS_NAMESPACE_OFFSET + $namespace_index)
+            .map(|s| Arc::from(&**s));
+        
+        value
+    }};
+}
+
 impl TinyV2Mapping {
     fn extract_namespaces(&self) -> Result<(usize, usize, usize), MappingError> {
         macro_rules! find {
@@ -185,15 +200,11 @@ impl TinyV2Mapping {
         current_class_name: &mut Arc<str>,
         parts: &Vec<&str>
     ) -> Result<(), MappingError> {
-        let class_name: Arc<str> = parts.get(BASE_NAMESPACE_OFFSET + namespace_named_index)
-            .map(|s| Arc::from(&**s))
+        let class_name = namespace_value!(base, parts, namespace_named_index)
             .ok_or(MappingError::MissingClassName)?;
 
-        let official_name: Option<Arc<str>> = parts.get(BASE_NAMESPACE_OFFSET + namespace_official_index)
-            .map(|s| Arc::from(&**s));
-
-        let intermediary_name: Option<Arc<str>> = parts.get(BASE_NAMESPACE_OFFSET + namespace_intermediary_index)
-            .map(|s| Arc::from(&**s));
+        let official_name = namespace_value!(base, parts, namespace_official_index);
+        let intermediary_name = namespace_value!(base, parts, namespace_intermediary_index);
 
         *current_class_name = class_name.clone();
         self.classes.insert(class_name, ClassMapping::new(official_name, intermediary_name, HashMap::new(), HashMap::new()));
@@ -213,15 +224,11 @@ impl ClassMapping {
         subsection_type: &&str,
         descriptor: Arc<str>
     ) -> Result<(), MappingError> {
-        let named_name: Arc<str> = parts.get(BASE_CLASS_MEMBERS_NAMESPACE_OFFSET + namespace_named_index)
-            .map(|s| Arc::from(&**s))
+        let named_name = namespace_value!(member, parts, namespace_named_index)
             .ok_or(MappingError::MissingFieldOrMethodName)?;
 
-        let official_name: Option<Arc<str>> = parts.get(BASE_CLASS_MEMBERS_NAMESPACE_OFFSET + namespace_official_index)
-            .map(|s| Arc::from(&**s));
-
-        let intermediary_name: Option<Arc<str>> = parts.get(BASE_CLASS_MEMBERS_NAMESPACE_OFFSET + namespace_intermediary_index)
-            .map(|s| Arc::from(&**s));
+        let official_name = namespace_value!(member, parts, namespace_official_index);
+        let intermediary_name = namespace_value!(member, parts, namespace_intermediary_index);
 
         if *subsection_type == METHOD_IDENT {
             // Method section
