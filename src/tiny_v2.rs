@@ -103,6 +103,7 @@ const COMMENT_IDENT: &str = "c";
 const METHOD_IDENT: &str = "m";
 const FIELD_IDENT: &str = "f";
 const BASE_NAMESPACE_OFFSET: usize = 1;
+const SECTION_IDENT_OFFSET: usize = 0;
 
 impl TinyV2Mapping {
     fn extract_namespaces(&mut self) -> Result<(usize, usize, usize), MappingError> {
@@ -124,7 +125,7 @@ impl TinyV2Mapping {
         line: &str
     ) -> Result<(), MappingError> {
         let parts: Vec<&str> = line.split(DELIMITER).collect();
-        match parts[0] {
+        match parts[SECTION_IDENT_OFFSET] {
             CLASS_IDENT => self.parse_class(
                 namespace_named_index,
                 namespace_intermediary_index,
@@ -132,7 +133,7 @@ impl TinyV2Mapping {
                 current_class_name,
                 &parts
             )?,
-            _ if parts[0].is_empty() && !parts[1].is_empty() => {
+            _ if parts[SECTION_IDENT_OFFSET].is_empty() && !parts[SUBSECTION_OFFSET].is_empty() => {
                 // Method or field section, tab indicates a subsection.
                 if let Some(class_mapping) = self.classes.get_mut(current_class_name) {
                     let subsection_type = &parts[SUBSECTION_OFFSET];
