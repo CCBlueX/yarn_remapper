@@ -61,6 +61,12 @@ impl From<Arc<[u8]>> for MappingFile {
     }
 }
 
+impl<const N: usize> From<&'static [u8; N]> for MappingFile {
+    fn from(bytes: &'static [u8; N]) -> Self {
+        MappingFile::Bytes(Arc::from(&bytes[..]))
+    }
+}
+
 impl MappingFile {
     /// Returns the mapping data as a byte slice.
     ///
