@@ -12,6 +12,14 @@ pub struct Header {
     pub namespaces: Vec<Arc<str>>,
 }
 
+impl Header {
+    fn find_namespace_offset(&self, name: &str) -> Option<usize> {
+        self.namespaces
+            .iter()
+            .position(|ns| &**ns == name)
+    }
+}
+
 // ClassMapping struct that stores obfuscated class name and its members' mappings.
 #[derive(Debug, Default, new, Getters)]
 pub struct ClassMapping {
@@ -106,14 +114,15 @@ const BASE_NAMESPACE_OFFSET: usize = 1;
 const SECTION_IDENT_OFFSET: usize = 0;
 
 impl TinyV2Mapping {
-    fn extract_namespaces(&mut self) -> Result<(usize, usize, usize), MappingError> {
-        let namespace_named_index = self.header.namespaces.iter().position(|ns| &**ns == "named")
-            .ok_or(MappingError::MissingNamespace("named".into()))?;
-        let namespace_intermediary_index = self.header.namespaces.iter().position(|ns| &**ns == "intermediary")
-            .ok_or(MappingError::MissingNamespace("intermediary".into()))?;
-        let namespace_official_index = self.header.namespaces.iter().position(|ns| &**ns == "official")
-            .ok_or(MappingError::MissingNamespace("official".into()))?;
-        Ok((namespace_named_index, namespace_intermediary_index, namespace_official_index))
+    fn extract_namespaces(&self) -> Result<(usize, usize, usize), MappingError> {
+        macro_rules! find {
+            ($namespace:expr) => {{
+                self.header.find_namespace_offset($namespace)
+                    .ok_or(MappingError::MissingNamespace($namespace.into()))?
+            }};
+        }
+        
+        Ok((find!("named"), find!("intermediary"), find!("official")))
     }
 
     fn parse_line(
