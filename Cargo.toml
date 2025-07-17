@@ -2,7 +2,7 @@
 name = "yarn_remapper"
 version = "0.2.0"
 edition = "2021"
-authors = ["1zuna <marco@ccbluex.net>"]
+authors = ["Izuna <izuna.seikatsu@ccbluex.net>"]
 description = "A Rust library for remapping Minecraft's Yarn named mappings to obfuscated identifiers."
 repository = "https://github.com/CCBlueX/yarn_remapper"
 license = "GPL-3.0"

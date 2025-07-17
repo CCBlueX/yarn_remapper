@@ -24,7 +24,7 @@ Add yarn_remapper to your Cargo.toml dependencies:
 
 ```toml
 [dependencies]
-yarn_remapper = "0.1.1"
+yarn_remapper = "0.2.0"
 ```
 Ensure you have downloaded the mapping file required for remapping:
 
