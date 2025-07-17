@@ -24,17 +24,19 @@ Add yarn_remapper to your Cargo.toml dependencies:
 
 ```toml
 [dependencies]
-yarn_remapper = "0.1.0"
+yarn_remapper = "0.1.1"
 ```
 Ensure you have downloaded the mapping file required for remapping:
 
-TINY v2 Mapping File: yarn-1.20.4-rc1+build.1-mergedv2.jar
+TINY v2 Mapping File: [yarn-1.20.4-rc1+build.1-mergedv2.jar](https://maven.fabricmc.net/net/fabricmc/yarn/1.20.4%2Bbuild.1/yarn-1.20.4%2Bbuild.1-mergedv2.jar)
 
 ## Usage
 Here's an example of how to use yarn_remapper in your Rust project:
 
 ```rust
-use yarn_remapper::{Mapping, parse_tiny_v2};
+use yarn_remapper::{Mapping};
+use yarn_remapper::mapping::MappingLoader;
+use yarn_remapper::tiny_v2::TinyV2Mapping;
 use std::path::Path;
 
 fn main() -> Result<(), Error> {
@@ -42,7 +44,7 @@ fn main() -> Result<(), Error> {
     let path = Path::new("path/to/mappings.tiny");
     
     // Parse mappings
-    let mapping = parse_tiny_v2(&path)?;
+    let mapping = TinyV2Mapping::load(&path)?;
 
     // Remap a class name
     if let Some(obfuscated_name) = mapping.remap_class("net/minecraft/client/MinecraftClient") {
